@@ -6,6 +6,8 @@ cosine similarity, with strict train/test separation to prevent data leakage.
 CRITICAL: This module ensures graph edges are built using ONLY training data.
 Test nodes can be added later but will only connect to training nodes.
 
+Supports both faiss-cpu and faiss-gpu with automatic detection.
+
 Example:
     >>> from src.data.graph_builder import GraphBuilder
     >>> builder = GraphBuilder()
@@ -18,9 +20,23 @@ Example:
 from pathlib import Path
 from typing import Optional, Tuple
 
-import faiss
 import numpy as np
 import torch
+
+# Try to import faiss-gpu, fallback to faiss-cpu
+try:
+    import faiss
+    # Check if GPU is available
+    if hasattr(faiss, 'get_num_gpus') and faiss.get_num_gpus() > 0:
+        FAISS_GPU_AVAILABLE = True
+        print("Loading faiss with GPU support.")
+    else:
+        FAISS_GPU_AVAILABLE = False
+        print("Loading faiss with CPU support (no GPU detected).")
+except ImportError:
+    import faiss
+    FAISS_GPU_AVAILABLE = False
+    print("Loading faiss-cpu.")
 
 from src.utils.config import load_model_config, ModelConfig
 from src.utils.exceptions import GraphBuildingError
@@ -103,8 +119,17 @@ class GraphBuilder:
             features_np = X_train.cpu().numpy().astype(np.float32)
             faiss.normalize_L2(features_np)
             
-            # Build FAISS index
-            self._index = faiss.IndexFlatIP(features_np.shape[1])
+            # Build FAISS index (GPU if available)
+            index_flat = faiss.IndexFlatIP(features_np.shape[1])
+            
+            if FAISS_GPU_AVAILABLE:
+                # Use GPU for faster indexing
+                res = faiss.StandardGpuResources()
+                self._index = faiss.index_cpu_to_gpu(res, 0, index_flat)
+                logger.info("Using FAISS GPU index")
+            else:
+                self._index = index_flat
+            
             self._index.add(features_np)
             
             # Construct edges from training data only

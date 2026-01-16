@@ -91,6 +91,26 @@ uv run python scripts/reproduce_cv_metrics.py --sample_frac 1.0
 | G-Means Improvement | 18.11% |
 | P95 Latency | <100ms |
 
+## Google Colab Training
+
+For full dataset training (91M+ edges), use Google Colab with GPU:
+
+1. **Push to GitHub** (ensure `data/` is in `.gitignore`)
+2. **Open Colab** and follow `notebooks/colab_training.md`
+3. **Key steps:**
+   ```python
+   # Mount Drive for data
+   from google.colab import drive
+   drive.mount('/content/drive')
+   
+   # Clone and install
+   !git clone https://github.com/YOUR_USERNAME/fraudguard.git
+   !pip install -e fraudguard
+   !pip install faiss-gpu  # GPU FAISS for fast indexing
+   ```
+
+The notebook uses `NeighborLoader` for mini-batch training, enabling training on graphs too large for local memory.
+
 ## Scripts
 
 | Script | Purpose |
