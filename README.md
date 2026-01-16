@@ -67,6 +67,39 @@ Edit `config/data_config.yaml` and `config/model_config.yaml` to customize:
 - Model hyperparameters
 - Training settings
 
+## Reproducing Results
+
+### Quick Test (10% data, ~5 min)
+```bash
+uv run python scripts/train_full.py --sample_frac 0.1 --epochs 50
+```
+
+### Full Training (100% data, ~2 hours)
+```bash
+uv run python scripts/train_full.py --sample_frac 1.0 --epochs 100
+```
+
+### Reproduce CV Claims
+```bash
+uv run python scripts/reproduce_cv_metrics.py --sample_frac 1.0
+```
+
+### Target Metrics
+| Metric | Target |
+|--------|--------|
+| Specificity | 98.72% |
+| G-Means Improvement | 18.11% |
+| P95 Latency | <100ms |
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/test_phase2.py` | Smoke test all modules |
+| `scripts/baseline_comparison.py` | Compare original vs refactored |
+| `scripts/train_full.py` | Full pipeline training |
+| `scripts/reproduce_cv_metrics.py` | Reproduce CV claims |
+
 ## License
 
 MIT

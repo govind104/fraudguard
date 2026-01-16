@@ -1,9 +1,25 @@
-"""Training modules placeholder.
+"""Training modules for FraudGuard.
 
-This subpackage will contain:
-- Trainer: Training orchestration with logging
-- Evaluator: Metrics computation (G-Means, F1, etc.)
-- Callbacks: Early stopping, LR scheduling
+This subpackage contains:
+- FraudTrainer: Full pipeline orchestration
+- Evaluator: Metrics computation and benchmarking
+- Callbacks: EarlyStopping, ModelCheckpoint, MetricsLogger
 """
 
-__all__ = []
+from src.training.trainer import FraudTrainer
+from src.training.evaluator import Evaluator
+from src.training.callbacks import (
+    Callback,
+    EarlyStopping,
+    ModelCheckpoint,
+    MetricsLogger,
+)
+
+__all__ = [
+    "FraudTrainer",
+    "Evaluator",
+    "Callback",
+    "EarlyStopping",
+    "ModelCheckpoint",
+    "MetricsLogger",
+]
