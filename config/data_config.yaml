@@ -1,0 +1,65 @@
+# Data configuration for FraudGuard
+# Paths are relative to fraudguard/ directory
+
+paths:
+  # External data location (IEEE-CIS dataset)
+  raw_data_dir: "../ieee-fraud-detection"
+  
+  # Generated artifacts
+  processed_dir: "data/processed"
+  graphs_dir: "data/graphs"
+
+# Source files in raw_data_dir
+files:
+  train_transaction: "train_transaction.csv"
+  train_identity: "train_identity.csv"  # Available but not used
+  test_transaction: "test_transaction.csv"
+  test_identity: "test_identity.csv"    # Available but not used
+
+# Feature configuration
+features:
+  # Columns to load from CSV (memory optimization)
+  columns:
+    - TransactionDT
+    - TransactionAmt
+    - C1
+    - C2
+    - C3
+    - ProductCD
+    - card4
+    - P_emaildomain
+    - isFraud
+  
+  # Target column
+  target: "isFraud"
+  
+  # Categorical features for hashing
+  categorical:
+    - P_emaildomain
+    - card4
+    - ProductCD
+
+# Data types for memory optimization
+dtypes:
+  TransactionDT: int32
+  TransactionAmt: float32
+  C1: float32
+  C2: float32
+  C3: float32
+  ProductCD: category
+  card4: str
+  P_emaildomain: str
+  isFraud: int8
+
+# Splitting configuration
+splits:
+  train_ratio: 0.6
+  val_ratio: 0.2
+  test_ratio: 0.2
+  random_state: 42
+
+# Sampling configuration
+sampling:
+  # Fraction for development (use 1.0 for production)
+  default_frac: 0.1
+  random_state: 42

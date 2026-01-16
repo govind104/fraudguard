@@ -1,0 +1,71 @@
+# Model configuration for FraudGuard
+# All model hyperparameters in one place
+
+# Preprocessing
+preprocessing:
+  # PCA variance retention
+  pca_variance: 0.95
+  
+  # Email domain hash buckets
+  email_hash_buckets: 50
+  
+  # Card type hash buckets
+  card_hash_buckets: 20
+
+# Graph construction
+graph:
+  # FAISS similarity threshold for edge creation
+  similarity_threshold: 0.8
+  
+  # Batch size for FAISS search
+  batch_size: 8192
+  
+  # Max neighbors per node in FAISS search
+  max_neighbors: 100
+
+# Adaptive Majority Class Downsampling
+adaptive_mcd:
+  hidden_dim: 64
+  alpha: 0.5  # Downsampling aggressiveness
+  training_epochs: 10
+  learning_rate: 0.001
+
+# Reinforcement Learning Agent
+rl_agent:
+  hidden_dim: 16
+  num_actions: 3  # RW, K-hop, K-ego
+  learning_rate: 0.005
+  training_epochs: 100
+  reward_scaling: 2.0
+  # Future: entropy_coeff: 0.01 for exploration
+
+# Minor-node-centered Explored Subgraph (MCES)
+mces:
+  k_rw: 10      # Random walk length
+  k_hop: 3      # K-hop neighborhood depth
+  k_ego: 2      # K-ego neighborhood depth
+  max_neighbors: 1000
+
+# Graph Neural Network
+gnn:
+  hidden_channels: 128
+  num_layers: 3
+  dropout: 0.4
+  batch_norm: true
+
+# Focal Loss
+focal_loss:
+  alpha: 0.5
+  gamma: 4
+  # class_weights: auto (computed from data)
+
+# Training
+training:
+  max_epochs: 100
+  early_stopping_patience: 30
+  val_check_interval: 5
+  gradient_clip: 1.0
+  learning_rate: 0.01
+  weight_decay: 0.0001
+  optimizer: adam
+  scheduler: reduce_on_plateau
