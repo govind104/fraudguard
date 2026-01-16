@@ -72,20 +72,30 @@ venv.bak/
 # pyenv
 .python-version
 
-# Data artifacts (generated, not tracked)
+# ============================================
+# Data artifacts (too large for GitHub)
+# Handle via Google Drive or direct download
+# ============================================
+data/
 data/processed/
 data/graphs/
+*.csv
+*.parquet
 
 # Model artifacts
+models/
 *.pkl
 *.pt
 *.pth
 *.onnx
 
-# Logs
-*.log
+# Logs and training outputs
 logs/
+*.log
+*.jsonl
+training_*.csv
 
 # OS files
 .DS_Store
 Thumbs.db
+
