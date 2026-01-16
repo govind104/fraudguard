@@ -11,7 +11,7 @@ from google.colab import drive
 drive.mount('/content/drive')
 
 # Clone repository
-!git clone https://github.com/YOUR_USERNAME/fraudguard.git
+!git clone https://github.com/govind104/fraudguard.git
 %cd fraudguard
 
 # Install dependencies
