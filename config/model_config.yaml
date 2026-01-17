@@ -12,16 +12,16 @@ preprocessing:
   # Card type hash buckets
   card_hash_buckets: 20
 
-# Graph construction
+# Graph construction (memory-optimized settings)
 graph:
-  # FAISS similarity threshold for edge creation
-  similarity_threshold: 0.8
+  # FAISS similarity threshold (0.9 = stricter, fewer edges, less RAM)
+  similarity_threshold: 0.9
   
-  # Batch size for FAISS search
-  batch_size: 8192
+  # Batch size for FAISS search (chunked processing)
+  batch_size: 50000
   
-  # Max neighbors per node in FAISS search
-  max_neighbors: 100
+  # Max neighbors per node (reduced for memory efficiency)
+  max_neighbors: 50
 
 # Adaptive Majority Class Downsampling
 adaptive_mcd:
