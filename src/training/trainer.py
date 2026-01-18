@@ -226,8 +226,15 @@ class FraudTrainer:
             self.majority_nodes,
         )
         
+        # CRITICAL FIX: Update train_mask to exclude dropped nodes from loss calculation
+        # This is what actually **activates** the class balancing benefit of MCD
+        self.train_mask[:] = False  # Reset mask
+        self.train_mask[self.fraud_nodes] = True  # Keep all fraud nodes
+        self.train_mask[self.kept_majority] = True  # Keep only selected majority nodes
+        
         logger.info(
-            f"MCD downsampled: kept {len(self.kept_majority)}/{len(self.majority_nodes)} majority samples"
+            f"MCD downsampled: kept {len(self.kept_majority)}/{len(self.majority_nodes)} majority samples. "
+            f"New Training Set Size: {self.train_mask.sum()}"
         )
     
     def _train_rl_and_enhance(self):
@@ -286,13 +293,13 @@ class FraudTrainer:
             weight_decay=self.model_config.training["weight_decay"],
         )
         
-        # Class-weighted focal loss
-        self.class_weights = compute_class_weights(self.train_labels, self.device)
-        self.criterion = FocalLoss(
-            alpha=self.model_config.focal_loss["alpha"],
-            gamma=self.model_config.focal_loss["gamma"],
-            weight=self.class_weights,
-        )
+        # Verified Fix: CrossEntropyLoss with 15x weight
+        # Replaces FocalLoss which caused collapse
+        fraud_weight = 15.0
+        weights = torch.tensor([1.0, fraud_weight], device=self.device)
+        logger.info(f"Using CrossEntropyLoss with fraud_weight={fraud_weight}")
+        
+        self.criterion = torch.nn.CrossEntropyLoss(weight=weights)
     
     def _train_loop(self, max_epochs: int):
         """Main training loop with validation."""
