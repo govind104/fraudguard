@@ -184,16 +184,6 @@ Every fraud prediction includes regulatory-compliant feature attributions:
 
 ## Local Training
 
-### Quick Test (10% data)
-```bash
-python scripts/train.py --sample_frac 0.1 --epochs 10
-```
-
-### Full Training (100% data)
-```bash
-python scripts/train.py --sample_frac 1.0 --epochs 30
-```
-
 ### Command Line Options
 ```bash
 python scripts/train.py --help
@@ -226,7 +216,6 @@ GitHub Actions workflow includes:
 - **Linting**: black, isort, flake8
 - **Testing**: pytest with coverage
 - **Docker**: Build and push to registry
-- **Security**: Trivy vulnerability scanning
 
 ## License
 
