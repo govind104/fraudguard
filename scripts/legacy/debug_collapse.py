@@ -1,20 +1,23 @@
 """Debug script to diagnose minority class collapse."""
-import sys
+
 import gc
+import sys
+
 sys.path.insert(0, ".")
 
-import torch
-import numpy as np
 from pathlib import Path
 
+import numpy as np
+import torch
+from torch_geometric.data import Data
+from torch_geometric.loader import NeighborLoader
+
+from src.data.graph_builder import GraphBuilder
 from src.data.loader import FraudDataLoader
 from src.data.preprocessor import FeaturePreprocessor
-from src.data.graph_builder import GraphBuilder
-from src.models import FraudGNN, FocalLoss, compute_class_weights
-from src.utils.device_utils import set_seed, get_device
+from src.models import FocalLoss, FraudGNN, compute_class_weights
 from src.utils.config import load_model_config
-from torch_geometric.loader import NeighborLoader
-from torch_geometric.data import Data
+from src.utils.device_utils import get_device, set_seed
 
 set_seed(42)
 device = get_device()
@@ -55,7 +58,7 @@ all_labels = all_labels.to(device)
 train_mask = torch.zeros(n_train + n_val + n_test, dtype=torch.bool, device=device)
 val_mask = torch.zeros(n_train + n_val + n_test, dtype=torch.bool, device=device)
 train_mask[:n_train] = True
-val_mask[n_train:n_train + n_val] = True
+val_mask[n_train : n_train + n_val] = True
 
 data = Data(x=X_full, edge_index=edge_index, y=all_labels)
 data.train_mask = train_mask
@@ -90,7 +93,7 @@ print(f"  Ratio (Fraud/Legit): {weights[1].item() / weights[0].item():.2f}x")
 print("\n[2] MINI-BATCH LABEL DISTRIBUTION:")
 batch = next(iter(train_loader))
 batch = batch.to(device)
-batch_labels = batch.y[:batch.batch_size]
+batch_labels = batch.y[: batch.batch_size]
 fraud_count = (batch_labels == 1).sum().item()
 legit_count = (batch_labels == 0).sum().item()
 total = len(batch_labels)
@@ -103,10 +106,10 @@ print(f"  Ratio: {fraud_count/max(legit_count,1):.4f}")
 print("\n[3] RAW MODEL OUTPUTS:")
 model.eval()
 with torch.no_grad():
-    logits = model(batch.x, batch.edge_index)[:batch.batch_size]
+    logits = model(batch.x, batch.edge_index)[: batch.batch_size]
     probs = torch.softmax(logits, dim=1)
     pred_class = logits.argmax(dim=1)
-    
+
 print(f"  Logits shape: {logits.shape}")
 print(f"  Logits (Class 0) - Mean: {logits[:, 0].mean():.4f}, Std: {logits[:, 0].std():.4f}")
 print(f"  Logits (Class 1) - Mean: {logits[:, 1].mean():.4f}, Std: {logits[:, 1].std():.4f}")

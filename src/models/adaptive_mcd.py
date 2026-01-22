@@ -9,12 +9,13 @@ Example:
     >>> kept_indices = mcd.downsample(X_majority)
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
-from src.utils.config import load_model_config, ModelConfig
+from src.utils.config import ModelConfig
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

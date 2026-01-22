@@ -7,7 +7,7 @@ with open(nb_path, "r", encoding="utf-8") as f:
     nb = json.load(f)
 
 # --- Update Cell 7 (Config) ---
-# Index 7 corresponds to the code cell after "2️⃣ Configuration" markdown? 
+# Index 7 corresponds to the code cell after "2️⃣ Configuration" markdown?
 # Let's find it by content to be safe.
 config_cell = None
 graph_cell = None
@@ -43,16 +43,16 @@ if graph_cell:
         "from src.data.graph_builder import GraphBuilder\n",
         "from src.utils.config import load_model_config\n",
         "\n",
-        "GRAPH_CACHE = f\"{MODELS_DIR}/edges_full.pt\"\n",
+        'GRAPH_CACHE = f"{MODELS_DIR}/edges_full.pt"\n',
         "\n",
         "if os.path.exists(GRAPH_CACHE):\n",
-        "    print(f\"Loading cached graph from {GRAPH_CACHE}...\")\n",
+        '    print(f"Loading cached graph from {GRAPH_CACHE}...")\n',
         "    edge_index = torch.load(GRAPH_CACHE)\n",
-        "    print(f\"Loaded {edge_index.shape[1]:,} edges\")\n",
+        '    print(f"Loaded {edge_index.shape[1]:,} edges")\n',
         "    edge_index = edge_index.to(device)\n",
         "    X_full = X_full.to(device)\n",
         "else:\n",
-        "    print(\"🚀 Starting Memory-Optimized Graph Build (Directed)...\")\n",
+        '    print("🚀 Starting Memory-Optimized Graph Build (Directed)...")\n',
         "    \n",
         "    # Configure GraphBuilder\n",
         "    model_cfg = load_model_config()\n",
@@ -76,11 +76,11 @@ if graph_cell:
         "    \n",
         "    # 2. Build edges using Builder\n",
         "    # Train -> Train\n",
-        "    print(\"  Phase 1: Train -> Train...\")\n",
+        '    print("  Phase 1: Train -> Train...")\n',
         "    builder.fit(X_train)\n",
         "    \n",
         "    # Val/Test -> Train\n",
-        "    print(\"  Phase 2: Val/Test -> Train...\")\n",
+        '    print("  Phase 2: Val/Test -> Train...")\n',
         "    edge_index = builder.transform(torch.cat([X_val, X_test]), train_size=n_train)\n",
         "    \n",
         "    # Verify\n",
@@ -88,7 +88,7 @@ if graph_cell:
         "    \n",
         "    # Save\n",
         "    torch.save(edge_index, GRAPH_CACHE)\n",
-        "    print(f\"✓ Saved to {GRAPH_CACHE}\")\n",
+        '    print(f"✓ Saved to {GRAPH_CACHE}")\n',
         "    \n",
         "    # Cleanup\n",
         "    del builder\n",
@@ -97,7 +97,7 @@ if graph_cell:
         "    # Move to device\n",
         "    X_full = X_full.to(device)\n",
         "    edge_index = edge_index.to(device)\n",
-        "    print(f\"\\nFinal Graph ready on {device}\")\n"
+        '    print(f"\\nFinal Graph ready on {device}")\n',
     ]
     graph_cell["source"] = new_source
     print("Updated Graph Cell (Using GraphBuilder)")
@@ -115,7 +115,7 @@ if train_cell:
             new_source.append("# CrossEntropy with 15x penalty for fraud (Verified Local Fix)\n")
             new_source.append("weights = torch.tensor([1.0, 15.0]).to(device)\n")
             new_source.append("criterion = torch.nn.CrossEntropyLoss(weight=weights)\n")
-            skip = True # Skip the old loss definition lines until we hit blank/comments
+            skip = True  # Skip the old loss definition lines until we hit blank/comments
         elif skip and ("criterion =" in line or "weights =" in line):
             continue
         elif skip and line.strip() == "":
@@ -126,7 +126,7 @@ if train_cell:
             new_source.append(line)
         elif not skip:
             new_source.append(line)
-            
+
     train_cell["source"] = new_source
     print("Updated Training Cell (CrossEntropy, 15x)")
 

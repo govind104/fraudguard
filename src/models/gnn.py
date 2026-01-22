@@ -8,13 +8,14 @@ Example:
     >>> logits = model(x, edge_index)
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
-from typing import Optional
 
-from src.utils.config import load_model_config, ModelConfig
+from src.utils.config import ModelConfig, load_model_config
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

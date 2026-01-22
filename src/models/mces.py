@@ -11,10 +11,11 @@ Example:
     >>> neighbors = mces.random_walk(node_id)
 """
 
-import torch
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-from src.utils.config import load_model_config, ModelConfig
+import torch
+
+from src.utils.config import ModelConfig
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

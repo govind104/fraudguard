@@ -18,26 +18,26 @@ Example:
 """
 
 import time
-from typing import Optional
 from contextlib import asynccontextmanager
+from typing import Optional
 
-import torch
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+import torch
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.model_loader import get_model_loader
 from src.api.schemas import (
-    TransactionRequest,
-    PredictionResponse,
     BatchPredictionRequest,
     BatchPredictionResponse,
-    HealthResponse,
-    ModelInfoResponse,
     ExplanationResponse,
     FeatureAttribution,
+    HealthResponse,
+    ModelInfoResponse,
+    PredictionResponse,
+    TransactionRequest,
 )
-from src.api.model_loader import get_model_loader, ModelLoader
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -50,13 +50,13 @@ _mlflow_tracking = False
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager.
-    
+
     Handles startup (model loading) and shutdown (cleanup).
     """
     global _redis_client, _mlflow_tracking
-    
+
     logger.info("🚀 Starting FraudGuard API...")
-    
+
     # Load model on startup
     try:
         loader = get_model_loader()
@@ -64,13 +64,14 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Model loaded successfully")
     except Exception as e:
         logger.error(f"❌ Failed to load model: {e}")
-    
+
     # Initialize Redis connection
     try:
         import redis
+
         _redis_client = redis.Redis(
-            host="redis", 
-            port=6379, 
+            host="redis",
+            port=6379,
             decode_responses=True,
             socket_timeout=5,
         )
@@ -79,18 +80,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Redis not available: {e}")
         _redis_client = None
-    
+
     # Check MLflow tracking
     try:
         import mlflow
+
         if mlflow.get_tracking_uri():
             _mlflow_tracking = True
             logger.info("✅ MLflow tracking enabled")
     except Exception as e:
         logger.warning(f"⚠️ MLflow not available: {e}")
-    
+
     yield
-    
+
     # Cleanup on shutdown
     logger.info("🛑 Shutting down FraudGuard API...")
     if _redis_client:
@@ -130,10 +132,10 @@ def _preprocess_features(features: dict) -> torch.Tensor:
     """Convert request features to model input tensor."""
     loader = get_model_loader()
     preprocessor = loader.get_preprocessor()
-    
+
     # Convert to DataFrame for preprocessor
     df = pd.DataFrame([features])
-    
+
     # Apply preprocessing
     try:
         X = preprocessor.transform(df)
@@ -142,7 +144,7 @@ def _preprocess_features(features: dict) -> torch.Tensor:
         logger.warning(f"Preprocessor transform failed: {e}, using raw features")
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         X = df[numeric_cols].fillna(0).values.astype(np.float32)
-    
+
     return torch.tensor(X, dtype=torch.float32).to(loader.device)
 
 
@@ -164,7 +166,7 @@ def _generate_explanation(
     """Generate GNNExplainer explanation for a prediction."""
     try:
         from torch_geometric.explain import Explainer, GNNExplainer
-        
+
         explainer = Explainer(
             model=model,
             algorithm=GNNExplainer(epochs=100),
@@ -172,15 +174,15 @@ def _generate_explanation(
             node_mask_type="attributes",
             edge_mask_type="object",
         )
-        
+
         explanation = explainer(x, edge_index, index=node_idx)
-        
+
         # Extract feature importances
         node_mask = explanation.node_mask
         if node_mask is not None:
             importance = node_mask[node_idx].cpu().numpy()
             top_indices = np.argsort(importance)[-5:][::-1]  # Top 5
-            
+
             top_features = [
                 FeatureAttribution(
                     feature_name=f"feature_{i}",
@@ -191,21 +193,21 @@ def _generate_explanation(
             ]
         else:
             top_features = []
-        
+
         # Extract edge importance
         edge_mask = explanation.edge_mask
         edge_importance = {}
         if edge_mask is not None:
             for i, imp in enumerate(edge_mask[:10].cpu().numpy()):  # Top 10 edges
                 edge_importance[f"edge_{i}"] = float(imp)
-        
+
         return ExplanationResponse(
             node_id=node_idx,
             top_features=top_features,
             subgraph_nodes=list(range(min(10, x.shape[0]))),  # Placeholder
             edge_importance=edge_importance,
         )
-        
+
     except Exception as e:
         logger.warning(f"GNNExplainer failed: {e}")
         return None
@@ -226,7 +228,7 @@ async def root():
 async def health_check():
     """Health check endpoint for load balancers."""
     loader = get_model_loader()
-    
+
     return HealthResponse(
         status="healthy" if loader.is_loaded() else "unhealthy",
         model_loaded=loader.is_loaded(),
@@ -241,7 +243,7 @@ async def model_info():
     """Get model metadata and performance metrics."""
     loader = get_model_loader()
     info = loader.get_model_info()
-    
+
     return ModelInfoResponse(
         model_name=info["model_name"],
         version=info["version"],
@@ -258,38 +260,39 @@ async def predict(
     include_explanation: bool = False,
 ):
     """Predict fraud for a single transaction.
-    
+
     Args:
         request: Transaction data with features
         include_explanation: Include GNNExplainer attributions
-        
+
     Returns:
         Fraud prediction with probability and optional explanation
     """
     start_time = time.perf_counter()
-    
+
     try:
         loader = get_model_loader()
         model = loader.get_model()
-        
+
         # Check cache first
         cache_key = f"pred:{request.transaction_id}"
         if _redis_client:
             cached = _redis_client.get(cache_key)
             if cached:
                 import json
+
                 cached_response = json.loads(cached)
                 cached_response["processing_time_ms"] = (time.perf_counter() - start_time) * 1000
                 return PredictionResponse(**cached_response)
-        
+
         # Preprocess features
         features_dict = request.features.model_dump()
         x = _preprocess_features(features_dict)
-        
+
         # For single prediction, create minimal edge_index
         # In production, this would use the full graph or k-NN
         edge_index = torch.zeros((2, 0), dtype=torch.long).to(loader.device)
-        
+
         # Run inference
         model.eval()
         with torch.no_grad():
@@ -297,14 +300,14 @@ async def predict(
             probs = torch.softmax(logits, dim=1)
             fraud_prob = probs[0, 1].item()
             is_fraud = fraud_prob > 0.5
-        
+
         # Generate explanation if requested
         explanation = None
         if include_explanation:
             explanation = _generate_explanation(model, x, edge_index, 0)
-        
+
         processing_time = (time.perf_counter() - start_time) * 1000
-        
+
         response = PredictionResponse(
             transaction_id=request.transaction_id,
             is_fraud=is_fraud,
@@ -314,18 +317,19 @@ async def predict(
             processing_time_ms=processing_time,
             model_version=loader.model_version,
         )
-        
+
         # Cache result
         if _redis_client:
             import json
+
             _redis_client.setex(
                 cache_key,
                 3600,  # 1 hour TTL
                 json.dumps(response.model_dump(exclude={"explanation"})),
             )
-        
+
         return response
-        
+
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -334,30 +338,27 @@ async def predict(
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
 async def predict_batch(request: BatchPredictionRequest):
     """Predict fraud for multiple transactions.
-    
+
     Args:
         request: List of transactions (max 100)
-        
+
     Returns:
         Batch predictions with aggregate statistics
     """
     if len(request.transactions) > 100:
-        raise HTTPException(
-            status_code=400, 
-            detail="Maximum batch size is 100 transactions"
-        )
-    
+        raise HTTPException(status_code=400, detail="Maximum batch size is 100 transactions")
+
     predictions = []
     total_time = 0
     fraud_count = 0
-    
+
     for tx in request.transactions:
         response = await predict(tx, request.include_explanations)
         predictions.append(response)
         total_time += response.processing_time_ms
         if response.is_fraud:
             fraud_count += 1
-    
+
     return BatchPredictionResponse(
         predictions=predictions,
         total_transactions=len(predictions),
@@ -369,17 +370,19 @@ async def predict_batch(request: BatchPredictionRequest):
 @app.post("/model/reload")
 async def reload_model(background_tasks: BackgroundTasks):
     """Hot reload the model (admin endpoint).
-    
+
     Useful for updating to new model version without restart.
     """
+
     def _reload():
         loader = get_model_loader()
         loader.reload()
-    
+
     background_tasks.add_task(_reload)
     return {"status": "reload_initiated", "message": "Model will be reloaded in background"}
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

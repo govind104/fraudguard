@@ -9,13 +9,14 @@ Example:
     >>> actions = agent.select_actions(features[fraud_nodes])
 """
 
+from typing import List, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, List
 
 from src.models.mces import MCES
-from src.utils.config import load_model_config, ModelConfig
+from src.utils.config import ModelConfig
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

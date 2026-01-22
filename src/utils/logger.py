@@ -25,7 +25,7 @@ def configure_logging(
     log_file: Optional[Path] = None,
 ) -> None:
     """Configure global logging settings.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR).
         log_file: Optional path to write logs to file.
@@ -36,13 +36,13 @@ def configure_logging(
         stream=sys.stdout,
         level=getattr(logging, level.upper()),
     )
-    
+
     # Add file handler if specified
     if log_file:
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(getattr(logging, level.upper()))
         logging.getLogger().addHandler(file_handler)
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -65,13 +65,13 @@ def configure_logging(
 
 def get_logger(name: str) -> BoundLogger:
     """Get a structured logger for the given module.
-    
+
     Args:
         name: Module name, typically __name__.
-        
+
     Returns:
         Configured structlog logger.
-        
+
     Example:
         >>> logger = get_logger(__name__)
         >>> logger.info("Model training", epoch=10, loss=0.05)

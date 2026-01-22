@@ -2,14 +2,17 @@
 
 Run: uv run python scripts/test_phase2.py
 """
+
 import sys
+
 sys.path.insert(0, ".")
 
 import torch
+
+from src.data.graph_builder import GraphBuilder
 from src.data.loader import FraudDataLoader
 from src.data.preprocessor import FeaturePreprocessor
-from src.data.graph_builder import GraphBuilder
-from src.models import FraudGNN, FocalLoss, AdaptiveMCD, MCES, RLAgent, compute_class_weights
+from src.models import MCES, AdaptiveMCD, FocalLoss, FraudGNN, RLAgent, compute_class_weights
 
 print("=" * 50)
 print("Phase 2 Smoke Test")
@@ -37,11 +40,13 @@ builder.verify_no_leakage(full_edges, train_size=len(X_train))
 print(f"✓ Graph: {full_edges.shape[1]} edges (leak-free)")
 
 # 4. Labels
-labels = torch.cat([
-    torch.tensor(train_df["isFraud"].values, dtype=torch.long),
-    torch.tensor(val_df["isFraud"].values, dtype=torch.long),
-    torch.tensor(test_df["isFraud"].values, dtype=torch.long),
-])
+labels = torch.cat(
+    [
+        torch.tensor(train_df["isFraud"].values, dtype=torch.long),
+        torch.tensor(val_df["isFraud"].values, dtype=torch.long),
+        torch.tensor(test_df["isFraud"].values, dtype=torch.long),
+    ]
+)
 print(f"✓ Labels: {labels.sum()}/{len(labels)} fraud")
 
 # 5. Model forward pass
@@ -50,9 +55,9 @@ logits = model(X_full, full_edges)
 print(f"✓ FraudGNN output: {logits.shape}")
 
 # 6. Loss
-weights = compute_class_weights(labels[:len(train_df)])
+weights = compute_class_weights(labels[: len(train_df)])
 criterion = FocalLoss(alpha=0.5, gamma=4, weight=weights)
-loss = criterion(logits[:len(train_df)], labels[:len(train_df)])
+loss = criterion(logits[: len(train_df)], labels[: len(train_df)])
 print(f"✓ FocalLoss: {loss.item():.4f}")
 
 # 7. Quick backward pass

@@ -18,7 +18,7 @@ Example:
 """
 
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -26,6 +26,7 @@ import torch
 # Try to import faiss-gpu, fallback to faiss-cpu
 try:
     import faiss
+
     # Check if GPU is available
     if hasattr(faiss, 'get_num_gpus') and faiss.get_num_gpus() > 0:
         FAISS_GPU_AVAILABLE = True
@@ -38,7 +39,7 @@ except ImportError:
     FAISS_GPU_AVAILABLE = False
     print("Loading faiss-cpu.")
 
-from src.utils.config import load_model_config, ModelConfig
+from src.utils.config import ModelConfig, load_model_config
 from src.utils.exceptions import GraphBuildingError
 from src.utils.logger import get_logger
 

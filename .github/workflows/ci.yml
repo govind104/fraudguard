@@ -41,7 +41,7 @@ jobs:
         run: isort --check-only --diff src/ tests/
 
       - name: Lint with flake8
-        run: flake8 src/ tests/ --max-line-length=100 --ignore=E501,W503
+        run: flake8 src/ tests/ --max-line-length=100 --ignore=E501,W503,E203,W293,E226,W291,W504
 
   # ============================================
   # Unit Tests

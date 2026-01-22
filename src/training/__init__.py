@@ -7,15 +7,15 @@ This subpackage contains:
 - Callbacks: EarlyStopping, ModelCheckpoint, MetricsLogger
 """
 
-from src.training.trainer import FraudTrainer
-from src.training.minibatch_trainer import MiniBatchTrainer
-from src.training.evaluator import Evaluator
 from src.training.callbacks import (
     Callback,
     EarlyStopping,
-    ModelCheckpoint,
     MetricsLogger,
+    ModelCheckpoint,
 )
+from src.training.evaluator import Evaluator
+from src.training.minibatch_trainer import MiniBatchTrainer
+from src.training.trainer import FraudTrainer
 
 __all__ = [
     "FraudTrainer",

@@ -6,8 +6,8 @@ This subpackage provides:
 - GraphBuilder: Leak-free FAISS-based semantic similarity graph construction
 """
 
+from src.data.graph_builder import GraphBuilder
 from src.data.loader import FraudDataLoader
 from src.data.preprocessor import FeaturePreprocessor
-from src.data.graph_builder import GraphBuilder
 
 __all__ = ["FraudDataLoader", "FeaturePreprocessor", "GraphBuilder"]

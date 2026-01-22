@@ -10,12 +10,11 @@ Example:
     >>> print(f"Loaded {len(df)} rows, fraud ratio: {df.isFraud.mean():.2%}")
 """
 
-from pathlib import Path
 from typing import Optional, Tuple
 
 import pandas as pd
 
-from src.utils.config import load_data_config, DataConfig
+from src.utils.config import DataConfig, load_data_config
 from src.utils.exceptions import DataLoadingError
 from src.utils.logger import get_logger
 
