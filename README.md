@@ -88,8 +88,8 @@ python scripts/train.py --sample_frac 1.0 --skip_baseline
 ### Verified Results (A/B Test)
 | Metric | Baseline GNN | AD-RL-GNN | Improvement |
 |--------|--------------|-----------|-------------|
-| G-Means | 47.22% | 57.24% | **+21.2%** |
-| P95 Latency | 26.62ms | 27.55ms | ~Same |
+| G-Means | 46.61% | 57.21% | **+22.7%** |
+| P95 Latency | 26.86ms | 27.84ms | ~Same |
 
 ## Design Choices
 
@@ -97,7 +97,7 @@ python scripts/train.py --sample_frac 1.0 --skip_baseline
 
 This project deliberately uses minimal feature engineering (no user-aggregations, no identity table joins) to **isolate the architectural contribution** of the AD-RL-GNN framework. 
 
-The 21% G-Means improvement over baseline is purely from:
+The ~23% G-Means improvement over baseline is purely from:
 - Adaptive Majority Class Downsampling (MCD)
 - RL-based subgraph selection for fraud pattern recovery
 - 3-layer GCN with batch normalization
