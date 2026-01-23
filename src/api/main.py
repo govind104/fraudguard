@@ -55,15 +55,15 @@ async def lifespan(app: FastAPI):
     """
     global _redis_client, _mlflow_tracking
 
-    logger.info("🚀 Starting FraudGuard API...")
+    logger.info("[STARTUP] Starting FraudGuard API...")
 
     # Load model on startup
     try:
         loader = get_model_loader()
         _ = loader.get_model()  # Trigger lazy load
-        logger.info("✅ Model loaded successfully")
+        logger.info("[OK] Model loaded successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to load model: {e}")
+        logger.error(f"[ERROR] Failed to load model: {e}")
 
     # Initialize Redis connection
     try:
@@ -76,9 +76,9 @@ async def lifespan(app: FastAPI):
             socket_timeout=5,
         )
         _redis_client.ping()
-        logger.info("✅ Redis connected")
+        logger.info("[OK] Redis connected")
     except Exception as e:
-        logger.warning(f"⚠️ Redis not available: {e}")
+        logger.warning(f"[WARN] Redis not available: {e}")
         _redis_client = None
 
     # Check MLflow tracking
@@ -87,14 +87,14 @@ async def lifespan(app: FastAPI):
 
         if mlflow.get_tracking_uri():
             _mlflow_tracking = True
-            logger.info("✅ MLflow tracking enabled")
+            logger.info("[OK] MLflow tracking enabled")
     except Exception as e:
-        logger.warning(f"⚠️ MLflow not available: {e}")
+        logger.warning(f"[WARN] MLflow not available: {e}")
 
     yield
 
     # Cleanup on shutdown
-    logger.info("🛑 Shutting down FraudGuard API...")
+    logger.info("[SHUTDOWN] Shutting down FraudGuard API...")
     if _redis_client:
         _redis_client.close()
 
@@ -209,7 +209,8 @@ def _generate_explanation(
         )
 
     except Exception as e:
-        logger.warning(f"GNNExplainer failed: {e}")
+        import traceback
+        logger.error(f"GNNExplainer failed: {e}\n{traceback.format_exc()}")
         return None
 
 
@@ -287,18 +288,46 @@ async def predict(
 
         # Preprocess features
         features_dict = request.features.model_dump()
-        x = _preprocess_features(features_dict)
+        x_query = _preprocess_features(features_dict)
 
-        # For single prediction, create minimal edge_index
-        # In production, this would use the full graph or k-NN
-        edge_index = torch.zeros((2, 0), dtype=torch.long).to(loader.device)
+        # ===== RAG Pipeline: Retrieve neighbors and construct graph =====
+        faiss_index = loader.get_faiss_index()
+        feature_store = loader.get_feature_store()
+
+        if faiss_index is not None and feature_store is not None:
+            # k-NN search: find 50 nearest neighbors from training set
+            k = min(50, faiss_index.ntotal)
+            D, I = faiss_index.search(x_query.cpu().numpy(), k)
+            neighbor_indices = I[0]
+
+            # Retrieve neighbor features from memory-mapped store
+            neighbor_feats = torch.tensor(
+                feature_store[neighbor_indices], dtype=torch.float32
+            ).to(loader.device)
+
+            # Construct star graph: neighbors (1..k) -> query node (0)
+            edge_index = torch.zeros((2, k), dtype=torch.long, device=loader.device)
+            edge_index[0] = torch.arange(1, k + 1)  # Sources: neighbors
+            edge_index[1] = 0  # Target: query node
+
+            # Combine features: [Query (0), Neighbor 1, ..., Neighbor k]
+            x = torch.cat([x_query, neighbor_feats], dim=0)
+
+            logger.debug(
+                f"RAG: Retrieved {k} neighbors, graph shape: x={x.shape}, edges={edge_index.shape}"
+            )
+        else:
+            # Fallback: single-node mode if RAG artifacts not available
+            logger.warning("RAG artifacts not available, using single-node mode")
+            x = x_query
+            edge_index = torch.zeros((2, 0), dtype=torch.long, device=loader.device)
 
         # Run inference
         model.eval()
         with torch.no_grad():
             logits = model(x, edge_index)
             probs = torch.softmax(logits, dim=1)
-            fraud_prob = probs[0, 1].item()
+            fraud_prob = probs[0, 1].item()  # Prediction for query node (index 0)
             is_fraud = fraud_prob > 0.5
 
         # Generate explanation if requested

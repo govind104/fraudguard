@@ -15,6 +15,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import faiss
+import numpy as np
 import torch
 
 from src.data.graph_builder import GraphBuilder
@@ -77,7 +79,7 @@ class ModelLoader:
             return
 
         self.model_path = model_path or os.environ.get(
-            "FRAUDGUARD_MODEL_PATH", "models/fraudguard_AD_RL.pt"
+            "FRAUDGUARD_MODEL_PATH", "models/processed/fraudguard_AD_RL.pt"
         )
         self.config = config or load_model_config()
         self.device = device or get_device()
@@ -86,6 +88,11 @@ class ModelLoader:
         self._model: Optional[FraudGNN] = None
         self._preprocessor: Optional[FeaturePreprocessor] = None
         self._graph_builder: Optional[GraphBuilder] = None
+
+        # RAG artifacts (loaded lazily)
+        self._faiss_index: Optional[faiss.Index] = None
+        self._feature_store: Optional[np.ndarray] = None
+        self._index_to_id: Optional[np.ndarray] = None
 
         # Metadata
         self.model_version: str = "1.0.0"
@@ -200,6 +207,80 @@ class ModelLoader:
     def _load_graph_builder(self) -> GraphBuilder:
         """Load graph builder for inference."""
         return GraphBuilder(config=self.config)
+
+    def _load_rag_artifacts(self) -> None:
+        """Load RAG artifacts (FAISS index, feature store, ID mapping).
+
+        These artifacts enable retrieval-augmented inference by providing
+        k-NN neighbor lookup for incoming transactions.
+        """
+        # Try multiple paths for RAG artifacts
+        processed_dir = os.environ.get("FRAUDGUARD_PROCESSED_DIR", None)
+
+        search_paths = []
+        if processed_dir:
+            search_paths.append(Path(processed_dir))
+
+        # Standard paths
+        search_paths.extend(
+            [
+                Path("models/processed"),
+                Path("/app/models/processed"),  # Docker path
+            ]
+        )
+
+        for base_path in search_paths:
+            faiss_path = base_path / "faiss.index"
+            store_path = base_path / "feature_store.npy"
+            map_path = base_path / "index_to_id.npy"
+
+            if faiss_path.exists() and store_path.exists():
+                # Load FAISS index
+                self._faiss_index = faiss.read_index(str(faiss_path))
+                logger.info(
+                    f"[OK] Loaded FAISS index with {self._faiss_index.ntotal:,} vectors"
+                )
+
+                # Load feature store (memory-mapped for efficiency)
+                self._feature_store = np.load(str(store_path), mmap_mode="r")
+                logger.info(
+                    f"[OK] Loaded feature store: shape {self._feature_store.shape}"
+                )
+
+                # Load ID mapping (optional, for explainability)
+                if map_path.exists():
+                    self._index_to_id = np.load(str(map_path))
+                    logger.info("[OK] Loaded ID mapping for explainability")
+
+                return
+
+        logger.warning(
+            "[WARNING] RAG artifacts not found. Run build_inference_artifacts.py first."
+        )
+
+    def get_faiss_index(self) -> Optional[faiss.Index]:
+        """Get FAISS index for k-NN search (thread-safe, cached)."""
+        if self._faiss_index is None:
+            with _model_lock:
+                if self._faiss_index is None:
+                    self._load_rag_artifacts()
+        return self._faiss_index
+
+    def get_feature_store(self) -> Optional[np.ndarray]:
+        """Get feature store for neighbor feature retrieval."""
+        if self._feature_store is None:
+            with _model_lock:
+                if self._feature_store is None:
+                    self._load_rag_artifacts()
+        return self._feature_store
+
+    def get_index_to_id(self) -> Optional[np.ndarray]:
+        """Get ID mapping for explainability."""
+        if self._index_to_id is None:
+            with _model_lock:
+                if self._index_to_id is None:
+                    self._load_rag_artifacts()
+        return self._index_to_id
 
     def get_model(self) -> FraudGNN:
         """Get loaded model (thread-safe, cached)."""

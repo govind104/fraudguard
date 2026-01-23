@@ -169,14 +169,18 @@ class FeaturePreprocessor:
         
         Creates:
         - Temporal features (TransactionHour, TimeSinceLast)
-        - Hashed categorical features (email, card4)
+        - Fixed-size hashed categorical features (email, card4)
         - Numeric features
+        
+        CRITICAL: Uses fixed-size one-hot encoding (not pd.get_dummies) to ensure
+        consistent feature dimensions regardless of input data categories.
+        Total features: 6 numeric + 50 email buckets + 20 card buckets = 76 features
         
         Args:
             df: Raw DataFrame.
             
         Returns:
-            NumPy array of engineered features.
+            NumPy array of engineered features with shape (n_samples, 76).
         """
         # Make a copy to avoid modifying original
         df = df.copy()
@@ -190,26 +194,26 @@ class FeaturePreprocessor:
         df = df.sort_values("TransactionDT")
         df["TimeSinceLast"] = df["TransactionDT"].diff().fillna(0)
         
-        # Numeric features
+        # Numeric features (6 features)
         num_cols = ["TransactionAmt", "C1", "C2", "C3", "TransactionHour", "TimeSinceLast"]
         num_features = df[num_cols].fillna(0).values
         
-        # Hash categorical features
-        email_buckets = self.model_config.preprocessing["email_hash_buckets"]
-        card_buckets = self.model_config.preprocessing["card_hash_buckets"]
+        # Get bucket sizes from config
+        email_buckets = self.model_config.preprocessing["email_hash_buckets"]  # 50
+        card_buckets = self.model_config.preprocessing["card_hash_buckets"]    # 20
         
-        email_hash = pd.get_dummies(
-            pd.util.hash_pandas_object(df["P_emaildomain"]) % email_buckets,
-            prefix="email",
-        ).values
+        # FIXED-SIZE one-hot encoding for email (50 columns)
+        email_hashes = pd.util.hash_pandas_object(df["P_emaildomain"]) % email_buckets
+        email_onehot = np.zeros((len(df), email_buckets), dtype=np.float32)
+        email_onehot[np.arange(len(df)), email_hashes.values] = 1.0
         
-        card_hash = pd.get_dummies(
-            pd.util.hash_pandas_object(df["card4"]) % card_buckets,
-            prefix="card",
-        ).values
+        # FIXED-SIZE one-hot encoding for card4 (20 columns)
+        card_hashes = pd.util.hash_pandas_object(df["card4"]) % card_buckets
+        card_onehot = np.zeros((len(df), card_buckets), dtype=np.float32)
+        card_onehot[np.arange(len(df)), card_hashes.values] = 1.0
         
-        # Combine all features
-        features = np.hstack([num_features, email_hash, card_hash])
+        # Combine all features: 6 + 50 + 20 = 76 features
+        features = np.hstack([num_features, email_onehot, card_onehot])
         
         return features.astype(np.float32)
     

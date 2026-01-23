@@ -14,8 +14,8 @@ preprocessing:
 
 # Graph construction (memory-optimized settings)
 graph:
-  # FAISS similarity threshold (0.9 = stricter, fewer edges, less RAM)
-  similarity_threshold: 0.9
+  # FAISS similarity threshold (0.75 = matches training graph construction)
+  similarity_threshold: 0.75
   
   # Batch size for FAISS search (chunked processing)
   batch_size: 50000
